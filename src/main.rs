@@ -15,9 +15,46 @@
 #![cfg_attr(test, test_runner(agb::test_runner::test_runner))]
 
 use agb::{
+    display::object::{Graphics, Object, OamManaged, Tag},
     include_aseprite,
-    display::object::{Graphics, Tag}
 };
+
+struct Paddle<'obj> {
+    start: Object<'obj>,
+    mid: Object<'obj>,
+    end: Object<'obj>,
+}
+
+impl<'obj> Paddle<'obj> {
+    fn new(object: &'obj OamManaged<'_>, start_x: i32, start_y: i32) -> Self {
+        let mut paddle_start = object.object_sprite(PADDLE_END.sprite(0));
+        let mut paddle_mid = object.object_sprite(PADDLE_MID.sprite(0));
+        let mut paddle_end = object.object_sprite(PADDLE_END.sprite(0));
+
+        paddle_start.show();
+        paddle_mid.show();
+        paddle_end.set_vflip(true).show();
+
+        let mut paddle = Self {
+            start: paddle_start,
+            mid: paddle_mid,
+            end: paddle_end,
+        };
+
+        paddle.set_position(start_x, start_y);
+
+        paddle
+    }
+
+    fn set_position(&mut self, x: i32, y: i32) {
+        // new! use of the `set_position` method. This is a helper feature using
+        // agb's vector types. For now we can just use it to avoid adding them
+        // separately
+        self.start.set_position((x, y));
+        self.mid.set_position((x, y + 16));
+        self.end.set_position((x, y + 32));
+    }
+}
 
 // Import the sprites in to this static. This holds the sprite
 // and palette data in a way that is manageable by agb.
@@ -38,6 +75,11 @@ fn main(mut gba: agb::Gba) -> ! {
 
     // Create an object with the ball sprite
     let mut ball = object.object_sprite(BALL.sprite(0));
+    let mut paddle_a = Paddle::new(&object, 8, 8); // the left paddle
+    let mut paddle_b = Paddle::new(&object, 240 - 16 - 8, 8); // the right paddle
+    paddle_b.start.set_hflip(true);
+    paddle_b.mid.set_hflip(true);
+    paddle_b.end.set_hflip(true);
 
     // Input controller
     use agb::input::Button;
@@ -55,6 +97,8 @@ fn main(mut gba: agb::Gba) -> ! {
     // now we initialise the x and y velocities to 0 rather than 1
     let mut x_velocity = 0;
     let mut y_velocity = 0;
+
+    // Make the paddle(s)
 
     loop {
         ball_x = (ball_x + x_velocity).clamp(0, agb::display::WIDTH - 16);
