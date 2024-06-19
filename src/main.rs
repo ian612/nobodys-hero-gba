@@ -14,9 +14,11 @@
 #![cfg_attr(test, reexport_test_harness_main = "test_main")]
 #![cfg_attr(test, test_runner(agb::test_runner::test_runner))]
 
+// Imports
 use agb::{
     display::object::{Graphics, Object, OamManaged, Tag},
     include_aseprite,
+    input::Button
 };
 
 struct Paddle<'obj> {
@@ -82,7 +84,6 @@ fn main(mut gba: agb::Gba) -> ! {
     paddle_b.end.set_hflip(true);
 
     // Input controller
-    use agb::input::Button;
     let mut input = agb::input::ButtonController::new();
 
     // Place this at some point on the screen, (50, 50) for example
