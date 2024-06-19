@@ -21,6 +21,7 @@ use agb::{
     input::Button
 };
 
+// Define Objects and types
 struct Paddle<'obj> {
     start: Object<'obj>,
     mid: Object<'obj>,
@@ -58,13 +59,35 @@ impl<'obj> Paddle<'obj> {
     }
 }
 
+struct Dave<'obj> {
+    down_idle: Object<'obj>
+}
+
+impl<'obj> Dave<'obj> {
+    fn new(object: &'obj OamManaged<'_>, start_x: i32, start_y: i32) -> Self {
+        let mut down_idle = object.object_sprite(DAVE_DOWN.sprite(0));
+
+        down_idle.show();
+
+        let mut dave = Self {
+            down_idle: down_idle
+        };
+
+        dave.down_idle.set_position((start_x, start_y));
+
+        dave
+    }
+}
+
 // Import the sprites in to this static. This holds the sprite
 // and palette data in a way that is manageable by agb.
 static GRAPHICS: &Graphics = include_aseprite!("gfx/sprites.aseprite");
+static DAVE_SPRITES: &Graphics = include_aseprite!("gfx/dave.aseprite");
 
 // We define some easy ways of referencing the sprites
 static PADDLE_END: &Tag = GRAPHICS.tags().get("Paddle End");
 static PADDLE_MID: &Tag = GRAPHICS.tags().get("Paddle Mid");
+static DAVE_DOWN: &Tag = DAVE_SPRITES.tags().get("Dave Down");
 static BALL: &Tag = GRAPHICS.tags().get("Ball");
 
 // The main function must take 1 arguments and never return. The agb::entry decorator
@@ -75,16 +98,18 @@ fn main(mut gba: agb::Gba) -> ! {
     // Get the object manager
     let object = gba.display.object.get_managed();
 
+    // Input controller
+    let mut input = agb::input::ButtonController::new();
+
     // Create an object with the ball sprite
     let mut ball = object.object_sprite(BALL.sprite(0));
-    let mut paddle_a = Paddle::new(&object, 8, 8); // the left paddle
+
+    // Create some paddles
+    // let mut paddle_a = Paddle::new(&object, 8, 8); // the left paddle
     let mut paddle_b = Paddle::new(&object, 240 - 16 - 8, 8); // the right paddle
     paddle_b.start.set_hflip(true);
     paddle_b.mid.set_hflip(true);
     paddle_b.end.set_hflip(true);
-
-    // Input controller
-    let mut input = agb::input::ButtonController::new();
 
     // Place this at some point on the screen, (50, 50) for example
     ball.set_x(50).set_y(50).show();
@@ -99,8 +124,19 @@ fn main(mut gba: agb::Gba) -> ! {
     let mut x_velocity = 0;
     let mut y_velocity = 0;
 
-    // Make the paddle(s)
+    // Dave positions
+    let mut dave_x: i32 = 120;
+    let mut dave_y: i32 = 80;
 
+    // Dave velocities
+    let mut dave_vel_x: i32 = 0;
+    let mut dave_vel_y: i32 = 0;
+
+    // Make our buddy Dave
+    let mut dave = object.object_sprite(DAVE_DOWN.sprite(0));
+    dave.set_x(dave_x as u16).set_y(dave_y as u16).show();
+
+    // Main loop
     loop {
         ball_x = (ball_x + x_velocity).clamp(0, agb::display::WIDTH - 16);
         ball_y = (ball_y + y_velocity).clamp(0, agb::display::HEIGHT - 16);
@@ -117,6 +153,23 @@ fn main(mut gba: agb::Gba) -> ! {
         }
 
         ball.set_x(ball_x as u16).set_y(ball_y as u16);
+
+        // Dave controls
+        dave_x = (dave_x + dave_vel_x).clamp(0, agb::display::WIDTH - 16);
+        dave_y = (dave_y + dave_vel_y).clamp(-8, agb::display::HEIGHT - 32);
+
+        // x_tri and y_tri describe with -1, 0 and 1 which way the d-pad
+        // buttons are being pressed
+        dave_vel_x = input.x_tri() as i32;
+        dave_vel_y = input.y_tri() as i32;
+
+        if input.is_pressed(Button::A) {
+            // the A button is pressed
+            dave_vel_x = dave_vel_x*2;
+            dave_vel_y = dave_vel_y*2;
+        }
+
+        dave.set_x(dave_x as u16).set_y(dave_y as u16);
 
         agb::display::busy_wait_for_vblank();
         object.commit();
